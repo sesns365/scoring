@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>樂樂布袋球 - 計分板</title>
+    
+    <!-- 引入 Tailwind CSS (美化樣式，使用 CDN，無需安裝) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 引入 Confetti 特效 (彩帶，使用 CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        /* 禁止選取文字，讓觸控體驗像原生 App */
+        body {
+            -webkit-user-select: none; /* Chrome/Safari */
+            -moz-user-select: none;    /* Firefox */
+            -ms-user-select: none;     /* IE/Edge */
+            user-select: none;         /* Standard */
+            touch-action: manipulation; /* 優化觸控反應，防止雙擊縮放延遲 */
+            font-family: system-ui, -apple-system, sans-serif;
+            overscroll-behavior: none; /* 防止手機下拉重整 */
+        }
+        
+        /* 點擊時的分數彈跳動畫 */
+        @keyframes scale-up {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .animate-pop {
+            animation: scale-up 0.3s ease-in-out;
+        }
+
+        /* 工具類：隱藏元素 */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex flex-col p-4">
+
+    <!-- 主卡片區域 -->
+    <div class="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl w-full flex-1 flex flex-col overflow-hidden border-4 border-white/50 relative mb-4">
+        
+        <!-- 頂部彩色裝飾條 -->
+        <div class="h-4 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 flex-shrink-0"></div>
+
+        <div class="p-4 md:p-8 flex flex-col gap-4 md:gap-6 flex-1 h-full justify-around">
+            
+            <!-- 標題區 -->
+            <div class="text-center space-y-2 mt-2">
+                <h1 class="text-3xl md:text-5xl font-black text-gray-800 tracking-wider flex items-center justify-center gap-3">
+                    <!-- 閃電圖示 (左) -->
+                    <svg class="text-yellow-500 fill-yellow-500 w-8 h-8 md:w-10 md:h-10" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    樂樂布袋球
+                    <!-- 閃電圖示 (右) -->
+                    <svg class="text-yellow-500 fill-yellow-500 w-8 h-8 md:w-10 md:h-10" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </h1>
+                <p class="text-gray-500 text-base md:text-xl font-medium">展現你的熱血時刻！</p>
+            </div>
+
+            <!-- 分數顯示大字 -->
+            <div class="relative py-2 flex justify-center flex-1 items-center">
+                <div id="score-display" 
+                     class="text-[8rem] md:text-[15rem] leading-none font-black text-transparent bg-clip-text bg-gradient-to-br from-blue-600 to-purple-600 transition-transform duration-300"
+                     style="text-shadow: 6px 6px 0px rgba(0,0,0,0.1);">
+                    0
+                </div>
+                <!-- 裝飾星星 (動畫效果) -->
+                <svg class="absolute top-1/4 right-[10%] text-yellow-400 w-8 h-8 md:w-12 md:h-12 animate-bounce" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg class="absolute bottom-1/4 left-[10%] text-pink-400 w-6 h-6 md:w-10 md:h-10 animate-pulse" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+
+            <!-- 按鈕操作區 -->
+            <div class="w-full max-w-3xl mx-auto space-y-4 md:space-y-6">
+                <!-- 加分按鈕區 -->
+                <div class="grid grid-cols-2 gap-4 md:gap-6">
+                    <button onclick="addScore(1)" class="group relative bg-cyan-400 hover:bg-cyan-500 text-white rounded-2xl h-24 md:h-36 flex flex-col items-center justify-center transition-all active:scale-95 shadow-[0_6px_0_rgb(6,182,212)] active:shadow-none active:translate-y-[6px] touch-manipulation">
+                        <span class="text-4xl md:text-6xl font-black mb-1 md:mb-2">+1</span>
+                        <span class="text-cyan-100 font-bold text-base md:text-xl">NICE!</span>
+                    </button>
+
+                    <button onclick="addScore(3)" class="group relative bg-orange-400 hover:bg-orange-500 text-white rounded-2xl h-24 md:h-36 flex flex-col items-center justify-center transition-all active:scale-95 shadow-[0_6px_0_rgb(234,88,12)] active:shadow-none active:translate-y-[6px] touch-manipulation">
+                        <span class="text-4xl md:text-6xl font-black mb-1 md:mb-2">+3</span>
+                        <span class="text-orange-100 font-bold text-base md:text-xl">SUPER!</span>
+                    </button>
+                </div>
+
+                <!-- 功能按鈕區 (復原/歸零) -->
+                <div class="flex justify-between items-center bg-gray-100 rounded-xl p-2 md:p-4 gap-3 md:gap-4">
+                    <button id="btn-undo" onclick="handleUndo()" disabled class="flex-1 py-3 md:py-4 rounded-lg font-bold text-base md:text-lg flex items-center justify-center gap-2 transition-colors touch-manipulation bg-gray-200 text-gray-400 cursor-not-allowed">
+                        <svg class="w-5 h-5 md:w-6 md:h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
+                        恢復上一個
+                    </button>
+
+                    <button onclick="handleReset()" class="flex-1 py-3 md:py-4 rounded-lg font-bold text-base md:text-lg flex items-center justify-center gap-2 bg-white text-gray-600 hover:bg-red-50 hover:text-red-500 transition-colors shadow-sm touch-manipulation">
+                        <svg class="w-5 h-5 md:w-6 md:h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                        歸零
+                    </button>
+                </div>
+
+                <!-- 總結按鈕 -->
+                <button onclick="showSummaryModal()" class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white py-4 md:py-5 rounded-xl font-bold text-xl md:text-2xl shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-3 transition-transform hover:scale-[1.02] active:scale-95 touch-manipulation">
+                    <svg class="w-6 h-6 md:w-8 md:h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 1 0 5H18"/><path d="M4 22h16"/><path d="M9 9a3 3 0 0 0 6 0"/><path d="M9 9h6"/></svg>
+                    比賽總結
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部 Footer -->
+    <div class="text-center text-white text-xl font-bold tracking-widest opacity-90 py-2">
+        安東潛能班
+    </div>
+
+    <!-- 總結視窗 (Modal) -->
+    <div id="modal-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeSummaryModal()"></div>
+        
+        <div class="bg-white rounded-3xl p-6 md:p-8 w-full max-w-sm relative z-10 shadow-2xl text-center border-4 border-yellow-400 transform transition-all animate-pop">
+            
+            <div class="absolute -top-12 left-1/2 transform -translate-x-1/2">
+               <div class="bg-yellow-400 rounded-full p-4 shadow-lg border-4 border-white">
+                 <svg class="w-10 h-10 md:w-12 md:h-12 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 1 0 5H18"/><path d="M4 22h16"/><path d="M9 9a3 3 0 0 0 6 0"/><path d="M9 9h6"/></svg>
+               </div>
+            </div>
+
+            <h2 class="mt-8 text-2xl font-bold text-gray-800">計分完成！</h2>
+            
+            <div class="my-6">
+                <p class="text-gray-500 text-sm mb-2">最終得分</p>
+                <p id="modal-score" class="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-orange-500">
+                    0
+                </p>
+            </div>
+            
+            <!-- 獎項區 -->
+            <div id="modal-prize-box" class="rounded-2xl p-4 mb-4 border-2 flex flex-col items-center justify-center gap-2">
+                <div id="modal-prize-icon"></div>
+                <div class="text-lg font-bold text-gray-500">恭喜獲得</div>
+                <div id="modal-prize-title" class="text-4xl font-black"></div>
+            </div>
+
+            <!-- 隨機鼓勵語 -->
+            <div class="bg-indigo-50 rounded-xl p-4 mb-6">
+                <p id="modal-encouragement" class="text-indigo-600 font-bold text-lg"></p>
+            </div>
+
+            <button onclick="closeSummaryModal()" class="w-full bg-gray-900 text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition-colors touch-manipulation">
+                繼續新的挑戰
+            </button>
+        </div>
+    </div>
+
+    <!-- 程式邏輯 (JavaScript) -->
+    <script>
+        // --- 狀態變數 ---
+        let score = 0;
+        let historyStack = [];
+        
+        // --- 取得網頁元素 ---
+        const scoreDisplay = document.getElementById('score-display');
+        const btnUndo = document.getElementById('btn-undo');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalScore = document.getElementById('modal-score');
+        const modalPrizeBox = document.getElementById('modal-prize-box');
+        const modalPrizeIcon = document.getElementById('modal-prize-icon');
+        const modalPrizeTitle = document.getElementById('modal-prize-title');
+        const modalEncouragement = document.getElementById('modal-encouragement');
+
+        // --- 音效系統 (使用瀏覽器內建 Web Audio API，無需外掛) ---
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // 產生頻率音效
+        function playTone(freq, type, duration, delay = 0) {
+            if (!audioCtx) initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime + delay);
+            osc.stop(audioCtx.currentTime + delay + duration);
+        }
+
+        // 播放指定動作音效
+        function playSound(action) {
+            initAudio();
+            switch (action) {
+                case 'add':
+                    playTone(600, 'sine', 0.1);
+                    playTone(800, 'sine', 0.1, 0.05);
+                    break;
+                case 'undo':
+                    playTone(400, 'triangle', 0.15);
+                    playTone(300, 'triangle', 0.15, 0.1);
+                    break;
+                case 'reset':
+                    playTone(200, 'sawtooth', 0.3);
+                    break;
+                case 'victory':
+                    playTone(523.25, 'sine', 0.3, 0);
+                    playTone(659.25, 'sine', 0.3, 0.1);
+                    playTone(783.99, 'sine', 0.4, 0.2);
+                    playTone(1046.50, 'square', 0.6, 0.3);
+                    break;
+            }
+        }
+
+        // --- 核心功能邏輯 ---
+        
+        // 更新畫面顯示
+        function updateUI() {
+            scoreDisplay.innerText = score;
+            
+            // 更新 Undo 按鈕狀態 (如果沒分可退，就變灰色)
+            if (historyStack.length === 0) {
+                btnUndo.disabled = true;
+                btnUndo.classList.add('bg-gray-200', 'text-gray-400', 'cursor-not-allowed');
+                btnUndo.classList.remove('bg-white', 'text-gray-600', 'hover:bg-gray-50', 'hover:text-blue-500', 'shadow-sm');
+            } else {
+                btnUndo.disabled = false;
+                btnUndo.classList.remove('bg-gray-200', 'text-gray-400', 'cursor-not-allowed');
+                btnUndo.classList.add('bg-white', 'text-gray-600', 'hover:bg-gray-50', 'hover:text-blue-500', 'shadow-sm');
+            }
+
+            // 分數彈跳動畫
+            scoreDisplay.classList.add('animate-pop');
+            setTimeout(() => scoreDisplay.classList.remove('animate-pop'), 300);
+        }
+
+        // 加分
+        function addScore(points) {
+            playSound('add');
+            historyStack.push(score);
+            score += points;
+            updateUI();
+        }
+
+        // 復原
+        function handleUndo() {
+            if (historyStack.length === 0) return;
+            playSound('undo');
+            score = historyStack.pop();
+            updateUI();
+        }
+
+        // 歸零 (不跳確認，直接歸零)
+        function handleReset() {
+            playSound('reset');
+            score = 0;
+            historyStack = [];
+            updateUI();
+            closeSummaryModal();
+        }
+
+        // --- 總結與獎項邏輯 ---
+        function getPrizeInfo(currentScore) {
+            if (currentScore >= 10) {
+                return {
+                    title: "大獎",
+                    iconSVG: `<svg class="w-16 h-16 text-yellow-500 animate-bounce" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>`,
+                    colorClass: "text-red-500",
+                    bgClass: "bg-red-50 border-red-200",
+                    phrases: ["太神啦！簡直是傳說！ 🌟", "閃耀全場！無人能擋！ 🔥", "這就是實力！完全制霸！ 👑", "分數爆炸！你是最棒的！ 🚀"]
+                };
+            } else if (currentScore >= 6) {
+                return {
+                    title: "二獎",
+                    iconSVG: `<svg class="w-16 h-16 text-blue-500 animate-pulse" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/><path d="M11 15 5 2.82"/><path d="M12.98 15l6.02-12.18"/><path d="M12 15a5 5 0 1 1-4.7-5"/></svg>`,
+                    colorClass: "text-blue-600",
+                    bgClass: "bg-blue-50 border-blue-200",
+                    phrases: ["表現優異！非常精彩！ 💪", "手感火燙！令人佩服！ ✨", "配合完美！值得喝采！ 🎉", "差一點就滿分了！超棒！ 🌈"]
+                };
+            } else if (currentScore >= 1) {
+                return {
+                    title: "小獎",
+                    iconSVG: `<svg class="w-16 h-16 text-green-500 animate-bounce" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>`,
+                    colorClass: "text-green-600",
+                    bgClass: "bg-green-50 border-green-200",
+                    phrases: ["不錯喔！有得分很棒！ 👍", "穩紮穩打，繼續加油！ 🌱", "開張大吉！下次會更多！ 🎈", "這是一個好的開始！ 😊"]
+                };
+            } else {
+                return {
+                    title: "再接再厲",
+                    iconSVG: `<svg class="w-16 h-16 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+                    colorClass: "text-gray-500",
+                    bgClass: "bg-gray-50 border-gray-200",
+                    phrases: ["沒關係，下次會更好！ ❤️", "再接再厲，永不放棄！ 💪", "失敗為成功之母，加油！ 🌻", "享受過程最重要！ 🤗"]
+                };
+            }
+        }
+
+        // 顯示總結視窗
+        function showSummaryModal() {
+            playSound('victory');
+            const prize = getPrizeInfo(score);
+            
+            modalScore.innerText = score;
+            modalPrizeIcon.innerHTML = prize.iconSVG;
+            modalPrizeTitle.innerText = prize.title;
+            modalPrizeTitle.className = `text-4xl font-black ${prize.colorClass}`;
+            
+            // 重設樣式並套用新樣式
+            modalPrizeBox.className = `rounded-2xl p-4 mb-4 border-2 flex flex-col items-center justify-center gap-2 ${prize.bgClass}`;
+            
+            // 隨機鼓勵語
+            modalEncouragement.innerText = prize.phrases[Math.floor(Math.random() * prize.phrases.length)];
+
+            modalOverlay.classList.remove('hidden');
+
+            // 彩帶特效
+            if (window.confetti) {
+                window.confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1']
+                });
+            }
+        }
+
+        // 關閉總結視窗
+        function closeSummaryModal() {
+            modalOverlay.classList.add('hidden');
+        }
+
+        // 初始化 UI
+        updateUI();
+
+    </script>
+</body>
+</html>
